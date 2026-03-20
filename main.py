@@ -5,6 +5,7 @@ import re
 import subprocess
 import time
 import uuid
+import unicodedata
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -94,19 +95,28 @@ def is_weather_query(text: str) -> bool:
 
 
 def is_recall_query(text: str) -> bool:
-    prompt = text.lower()
-    triggers = [
-        "que te acabo de decir",
-        "qué te acabo de decir",
-        "que dije recien",
-        "qué dije recién",
-        "que dije recién",
-        "what did i just say",
-        "what did i say",
-        "te acordas lo que dije",
-        "te acordás lo que dije",
-    ]
-    return any(trigger in prompt for trigger in triggers)
+    prompt = normalize_text(text)
+    return any(
+        phrase in prompt
+        for phrase in [
+            "que te acabo de decir",
+            "que te acabo de preguntar",
+            "que te pregunte recien",
+            "que te dije recien",
+            "que dije recien",
+            "what did i just say",
+            "what did i say",
+            "what did i just ask",
+            "te acordas lo que dije",
+            "te acordas lo que pregunte",
+        ]
+    )
+
+
+def normalize_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", text)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"\s+", " ", ascii_text.lower()).strip()
 
 
 def clean_agent_output(text: str) -> str:
@@ -307,7 +317,7 @@ class QuickIntentRouter:
         session = session_manager.get(session_key)
         last_user_message = None
         for item in reversed(session.history):
-            if item["role"] == "user":
+            if item["role"] == "user" and not is_recall_query(item["content"]):
                 last_user_message = item["content"]
                 break
 
