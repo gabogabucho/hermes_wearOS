@@ -2,7 +2,8 @@ import os
 import uuid
 import time
 import subprocess
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Security
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from typing import Optional, Dict
 from transcription import engine
@@ -21,6 +22,14 @@ def ask_hermes(text: str) -> str:
         return result.stdout.strip()
     except Exception as e:
         return f"Error al contactar con Hermes: {str(e)}"
+
+API_KEY = os.environ.get("HERMES_API_KEY", "hermes_secreto_123")
+api_key_header = APIKeyHeader(name="X-API-Key")
+
+def verify_api_key(api_key: str = Security(api_key_header)):
+    if api_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Acceso denegado: API Key incorrecta")
+    return api_key
 
 app = FastAPI(title="Hermes Wear OS Bridge")
 
@@ -46,7 +55,7 @@ class ChatResponse(BaseModel):
 async def root():
     return {"status": "online", "agent": "Hermes"}
 
-@app.post("/health")
+@app.post("/health", dependencies=[Depends(verify_api_key)])
 async def update_health(data: HealthData):
     state.last_hr = data.heart_rate
     state.last_steps = data.steps
@@ -62,11 +71,11 @@ async def update_health(data: HealthData):
         
     return {"status": "ok", "mood": state.emoji}
 
-@app.get("/mood")
+@app.get("/mood", dependencies=[Depends(verify_api_key)])
 async def get_mood():
     return {"emoji": state.emoji}
 
-@app.post("/voice-chat", response_model=ChatResponse)
+@app.post("/voice-chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
 async def voice_chat(audio: UploadFile = File(...)):
     # 1. Save audio temporarily
     temp_filename = f"tmp_{uuid.uuid4()}.wav"
