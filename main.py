@@ -1,14 +1,23 @@
-import os
-import json
-import uuid
-import time
+import subprocess
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict
 from transcription import engine
 
-# Mocking the AI agent import until the environment is set up
-# In production: from hermes_agent.run_agent import AIAgent
+# Interaction with Hermes via CLI
+def ask_hermes(text: str) -> str:
+    try:
+        # We run the 'hermes' command as a subprocess
+        # Adjust command if your hermes installation uses a different alias
+        result = subprocess.run(
+            ["hermes", "chat", "--text", text],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except Exception as e:
+        return f"Error al contactar con Hermes: {str(e)}"
 
 app = FastAPI(title="Hermes Wear OS Bridge")
 
@@ -68,9 +77,8 @@ async def voice_chat(audio: UploadFile = File(...)):
         if not transcription:
             raise HTTPException(status_code=400, detail="Could not transcribe audio")
 
-        # 3. Process with Hermes
-        # agent_response = agent.chat(transcription)
-        agent_response = f"Simulado: Recibí tu mensaje '{transcription}'"
+        # 3. Process with Hermes CLI
+        agent_response = ask_hermes(transcription)
         
         # 4. Clean up
         os.remove(temp_filename)
