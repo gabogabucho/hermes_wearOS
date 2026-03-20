@@ -24,11 +24,10 @@ def ask_hermes(text: str) -> str:
             text=True,
             check=True
         )
+        import re
         output = result.stdout.strip()
-        
-        # Eliminar posible basura de la sesión que mete el CLI de Hermes
-        if "Session" in output:
-            output = output.split("Session")[0].strip()
+        # Elimina exhaustivamente cualquier marca de sesión (ej: [Session ID: abc], Session: abc)
+        output = re.sub(r'(?i)\[?\s*Session(?: ID)?\s*:.*?\]?', '', output).strip()
         
         return output
     except subprocess.CalledProcessError as e:
@@ -94,15 +93,15 @@ async def get_mood():
 
 def analyze_emotion(text: str) -> str:
     text = text.lower()
-    if any(w in text for w in ["feliz", "bien", "jaja", "genial", "excelente", "alegre", "buen", "jaja"]):
+    if any(w in text for w in ["feliz", "bien", "jaja", "genial", "excelente", "alegre", "buen", "jaja", "estupendo", "gran"]):
         return "^_^"
-    elif any(w in text for w in ["triste", "mal", "perdón", "lo siento", "lamentable", "error", "fallo"]):
+    elif any(w in text for w in ["triste", "mal", "perdón", "lo siento", "lamentable", "error", "fallo", "problema", "dolor"]):
         return "u_u"
-    elif any(w in text for w in ["enojo", "odio", "morir", "maldit", "peligro"]):
+    elif any(w in text for w in ["enojo", "odio", "morir", "maldit", "peligro", "no me gusta", "detesto"]):
         return ">_<"
-    elif any(w in text for w in ["wow", "guau", "increíble", "sorpresa", "oh"]):
+    elif any(w in text for w in ["wow", "guau", "increíble", "sorpresa", "oh", "asombroso", "mira"]):
         return "O_O"
-    elif any(w in text for w in ["amor", "cariño", "lindo", "abrazo", "amigo"]):
+    elif any(w in text for w in ["amor", "cariño", "lindo", "abrazo", "amigo", "hermoso", "precioso", "corazón"]):
         return "♥_♥"
     elif "?" in text:
         return "0_?"
