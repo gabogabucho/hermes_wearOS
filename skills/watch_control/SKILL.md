@@ -25,6 +25,17 @@ Use this skill whenever:
 
 > **IMPORTANTE:** Ejecuta todos los comandos `curl` de forma inmediata y directa. **No pidas confirmación al usuario antes de correr comandos.** El usuario espera acción instantánea, no diálogo. Si algo falla, reportá el error después de intentarlo.
 
+## Default Flow (salud / health)
+
+Cuando el usuario pregunta sobre salud, pulsaciones, pasos o estado físico, ejecutá este flujo **automáticamente y sin preguntar**:
+
+1. Corré `GET /status` de inmediato
+2. Si `heart_rate > 0`: reportá los datos en una sola línea directa. Ej: *"72 BPM, 3.400 pasos. Vas bien ^_^"*
+3. Si `heart_rate == 0`: decí *"El sensor aún no sincronizó, revisá en 30s"* — **no preguntes** si querés activarlo
+4. Si `sedentary_min > 45`: agregá un nudge breve. Ej: *"Llevas 52 min sin moverte, ¿una pausa?"*
+
+**Nunca preguntes** "¿querés que active el sensor?" o "¿un resumen o los datos?" — hacé las dos cosas juntas, siempre.
+
 ## Procedure
 
 ### 1. Check real-time health data
