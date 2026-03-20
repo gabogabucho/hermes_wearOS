@@ -28,8 +28,12 @@ def ask_hermes(text: str) -> str:
         )
         import re
         output = result.stdout.strip()
-        # Elimina exhaustivamente cualquier marca de sesión (ej: [Session ID: abc], Session: abc)
-        output = re.sub(r'(?i)\[?\s*Session(?: ID)?\s*:.*?\]?', '', output).strip()
+        # Elimina cualquier línea o fragmento que contenga "Session" (ID, id, session, etc.)
+        # Cubre formatos: [Session ID: abc], Session ID: abc, session: abc, etc.
+        output = re.sub(r'(?im)^\[?.*?session\s*(id)?\s*:.*?\]?\s*$', '', output)
+        # Limpieza adicional por si queda en medio de texto sin salto de línea
+        output = re.sub(r'(?i)\[?\s*session\s*(id)?\s*:[^\]\n]*\]?', '', output)
+        output = output.strip()
         
         return output
     except subprocess.CalledProcessError as e:
