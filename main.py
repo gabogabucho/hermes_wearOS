@@ -12,7 +12,9 @@ from transcription import engine
 def ask_hermes(text: str) -> str:
     full_prompt = (
         "INSTRUCCIÓN DEL SISTEMA: Estás respondiendo en la diminuta pantalla de mi Smartwatch. "
-        "DEBES responder de forma enérgica, con MUCHA brevedad (máximo 1 o 2 líneas, sin viñetas, directo al punto). "
+        "DEBES responder de forma enérgica y con MUCHA brevedad (máximo 1 o 2 líneas, sin viñetas, directo al punto). "
+        "IMPORTANTE: Tienes una Cara Virtual en el reloj. Si quieres cambiar tu expresión facial, APUNTA literalmente uno de estos emojis al final de tu mensaje: "
+        "^_^ (alegría), u_u (tristeza), >_< (enojo), O_O (sorpresa), ♥_♥ (amor), -_- (duda/aburrimiento). "
         f"El usuario dice: {text}"
     )
     try:
@@ -79,7 +81,7 @@ async def update_health(data: HealthData):
     
     # Simple logic for emoji updates
     if state.last_hr > 110:
-        state.emoji = "o_O"
+        state.emoji = "O_O"
     elif state.last_hr < 50 and state.last_hr > 0:
         state.emoji = "-_-"
     else:
@@ -91,32 +93,45 @@ async def update_health(data: HealthData):
 async def get_mood():
     return {"emoji": state.emoji}
 
-def analyze_emotion(text: str) -> str:
-    text = text.lower()
-    if any(w in text for w in ["feliz", "bien", "jaja", "genial", "excelente", "alegre", "buen", "jaja", "estupendo", "gran"]):
-        return "^_^"
-    elif any(w in text for w in ["triste", "mal", "perdón", "lo siento", "lamentable", "error", "fallo", "problema", "dolor"]):
-        return "u_u"
-    elif any(w in text for w in ["enojo", "odio", "morir", "maldit", "peligro", "no me gusta", "detesto"]):
-        return ">_<"
-    elif any(w in text for w in ["wow", "guau", "increíble", "sorpresa", "oh", "asombroso", "mira"]):
-        return "O_O"
-    elif any(w in text for w in ["amor", "cariño", "lindo", "abrazo", "amigo", "hermoso", "precioso", "corazón"]):
-        return "♥_♥"
+def extract_emotion_and_clean_text(text: str) -> tuple[str, str]:
+    emojis_map = {
+        "^_^": "^_^", "u_u": "u_u", ">_<": ">_<", 
+        "O_O": "O_O", "o_o": "O_O", "♥_♥": "♥_♥", "-_-": "-_-"
+    }
+    
+    # 1. Búsqueda explícita de emojis inyectados por la IA
+    for raw_emoji, formatted_emoji in emojis_map.items():
+        if raw_emoji in text:
+            clean_text = text.replace(raw_emoji, "").strip()
+            return formatted_emoji, clean_text
+            
+    # 2. Sentimiento por palabras clave (si la IA olvidó poner el emoji)
+    text_lower = text.lower()
+    if any(w in text_lower for w in ["feliz", "bien", "jaja", "genial", "excelente", "alegre", "buen", "jaja", "estupendo", "gran"]):
+        return "^_^", text
+    elif any(w in text_lower for w in ["triste", "mal", "perdón", "lo siento", "lamentable", "error", "fallo", "problema", "dolor"]):
+        return "u_u", text
+    elif any(w in text_lower for w in ["enojo", "odio", "morir", "maldit", "peligro", "no me gusta", "detesto"]):
+        return ">_<", text
+    elif any(w in text_lower for w in ["wow", "guau", "increíble", "sorpresa", "oh", "asombroso", "mira"]):
+        return "O_O", text
+    elif any(w in text_lower for w in ["amor", "cariño", "lindo", "abrazo", "amigo", "hermoso", "precioso", "corazón"]):
+        return "♥_♥", text
     elif "?" in text:
-        return "0_?"
-    return "0_0"
+        return "0_?", text
+        
+    return "0_0", text
 
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
 async def text_chat(data: TextChat):
     agent_response = ask_hermes(data.message)
-    expresion = analyze_emotion(agent_response)
+    expresion, clean_text = extract_emotion_and_clean_text(agent_response)
     state.emoji = expresion  # Set it globally too!
     
     return {
-        "response": agent_response,
+        "response": clean_text,
         "emoji": expresion,
-        "vibrate": 100 if "alerta" in agent_response.lower() else 0
+        "vibrate": 100 if "alerta" in clean_text.lower() else 0
     }
 
 @app.post("/voice-chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
