@@ -24,7 +24,13 @@ def ask_hermes(text: str) -> str:
             text=True,
             check=True
         )
-        return result.stdout.strip()
+        output = result.stdout.strip()
+        
+        # Eliminar posible basura de la sesión que mete el CLI de Hermes
+        if "Session" in output:
+            output = output.split("Session")[0].strip()
+        
+        return output
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.strip() if e.stderr else (e.stdout.strip() if e.stdout else str(e))
         return f"Hermes Error: {error_msg}"
