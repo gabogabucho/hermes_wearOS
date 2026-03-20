@@ -51,6 +51,9 @@ class ChatResponse(BaseModel):
     emoji: str
     vibrate: Optional[int] = 0
 
+class TextChat(BaseModel):
+    message: str
+
 @app.get("/")
 async def root():
     return {"status": "online", "agent": "Hermes"}
@@ -74,6 +77,15 @@ async def update_health(data: HealthData):
 @app.get("/mood", dependencies=[Depends(verify_api_key)])
 async def get_mood():
     return {"emoji": state.emoji}
+
+@app.post("/chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
+async def text_chat(data: TextChat):
+    agent_response = ask_hermes(data.message)
+    return {
+        "response": agent_response,
+        "emoji": state.emoji,
+        "vibrate": 100 if "alerta" in agent_response.lower() else 0
+    }
 
 @app.post("/voice-chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
 async def voice_chat(audio: UploadFile = File(...)):
