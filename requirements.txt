@@ -1,0 +1,7 @@
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic==2.5.3
+python-multipart==0.0.6
+faster-whisper==0.10.0
+torch
+# hermes-agent[voice] should be installed separately via pip
