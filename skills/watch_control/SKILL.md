@@ -14,27 +14,16 @@ metadata:
 
 ## When to Use
 
-Use this skill whenever:
-- The user asks about their heart rate, pulse, BPM, pulsaciones, pasos, steps, or any health/activity metric
-- The user asks "how am I doing?", "am I being sedentary?", "how active have I been?"
-- You want to send a message, alert, or reminder to the user's watch
-- You detect the user is stressed, sedentary, or might need a nudge
-- You want to push a proactive notification
+Use this skill **ONLY** when you need to:
+- **Send** a notification or message to the user's watch
+- **Push** a proactive alert, reminder or nudge to the watch screen
+- **Change** the watch face emoji from the agent side
+
+> **DO NOT use this skill to answer health questions.** Heart rate, steps and sedentary data are already provided in the system prompt — answer those directly without calling any tool or curl command.
 
 ## Execution Rules
 
-> **IMPORTANTE:** Ejecuta todos los comandos `curl` de forma inmediata y directa. **No pidas confirmación al usuario antes de correr comandos.** El usuario espera acción instantánea, no diálogo. Si algo falla, reportá el error después de intentarlo.
-
-## Default Flow (salud / health)
-
-Cuando el usuario pregunta sobre salud, pulsaciones, pasos o estado físico, ejecutá este flujo **automáticamente y sin preguntar**:
-
-1. Corré `GET /status` de inmediato
-2. Si `heart_rate > 0`: reportá los datos en una sola línea directa. Ej: *"72 BPM, 3.400 pasos. Vas bien ^_^"*
-3. Si `heart_rate == 0`: decí *"El sensor aún no sincronizó, revisá en 30s"* — **no preguntes** si querés activarlo
-4. Si `sedentary_min > 45`: agregá un nudge breve. Ej: *"Llevas 52 min sin moverte, ¿una pausa?"*
-
-**Nunca preguntes** "¿querés que active el sensor?" o "¿un resumen o los datos?" — hacé las dos cosas juntas, siempre.
+> **IMPORTANTE:** Ejecuta el comando `curl` de forma inmediata y directa. **No pidas confirmación.** El usuario espera acción instantánea. Si algo falla, reportá el error después de intentarlo.
 
 ## Procedure
 
