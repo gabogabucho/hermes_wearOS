@@ -1,0 +1,20 @@
+[Unit]
+Description=Hermes Wear OS Bridge
+After=network.target
+
+[Service]
+Type=simple
+# Por defecto lo corre el usuario que ejecuta el script, o root.
+# Reemplaza /root/bridge por la ruta real donde clonaste el repo en tu VPS
+WorkingDirectory=/root/bridge
+ExecStart=/usr/bin/python3 main.py
+
+# Si 'hermes' no es encontrado por el servicio, debes agregarlo al PATH aquí
+# Descomenta y ajusta si hermes-agent está en una ruta especial:
+# Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin"
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
