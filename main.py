@@ -46,6 +46,16 @@ def build_health_context() -> str:
     )
 
 
+def is_health_query(text: str) -> bool:
+    prompt = text.lower()
+    triggers = [
+        "salud", "pulso", "pulsaciones", "ritmo cardiaco", "ritmo cardíaco",
+        "corazon", "corazón", "heart rate", "bpm", "pasos", "camine",
+        "caminé", "estres", "estrés", "sedent", "bienestar", "descanso"
+    ]
+    return any(trigger in prompt for trigger in triggers)
+
+
 def clean_agent_output(text: str) -> str:
     """Elimina outputs de herramientas (JSON, curl, bloques de código) del stdout del agente.
     Conserva solo las líneas de texto natural destinadas al usuario."""
@@ -104,7 +114,7 @@ def clean_agent_output(text: str) -> str:
 
 
 def ask_agent(text: str) -> str:
-    health_ctx = build_health_context()
+    health_ctx = build_health_context() if is_health_query(text) else ""
     full_prompt = (
         "INSTRUCCIÓN DEL SISTEMA: Estás respondiendo en la diminuta pantalla de mi Smartwatch. "
         "DEBES responder de forma enérgica y con MUCHA brevedad (máximo 1 o 2 líneas, sin viñetas, directo al punto). "
