@@ -1,0 +1,29 @@
+[Unit]
+Description=AgentPet Wear OS Bridge
+After=network.target
+
+[Service]
+Type=simple
+# Reemplaza /root/bridge por la ruta real donde clonaste el repo en tu VPS
+WorkingDirectory=/root/bridge
+ExecStart=/usr/bin/python3 main.py
+
+# ── Configura el agente que quieras usar ──────────────────────────────────
+# Hermes Agent (default):
+# Environment="AGENT_CMD=hermes chat -Q -q"
+#
+# llm (simonw/llm):
+# Environment="AGENT_CMD=llm -m gpt-4o"
+#
+# Nombre visible en GET /
+# Environment="AGENT_NAME=Hermes"
+# ─────────────────────────────────────────────────────────────────────────
+
+# Si el CLI del agente no está en el PATH del servicio, añádelo aquí:
+# Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin"
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,53 +1,50 @@
 #!/bin/bash
-# Script para instalar el servicio de Hermes en Systemd de tu VPS
-# IMPORTANTE: Ejecútalo SIN sudo inicialmente (el script pedirá tu contraseña luego si la necesita): 
+# Script para instalar el servicio AgentPet Bridge en Systemd de tu VPS
+# Ejecútalo SIN sudo inicialmente (el script pedirá contraseña cuando la necesite):
 # bash deploy_service.sh
-echo "Iniciando instalación del servicio de Hermes Bridge..."
 
-# Obtener la ruta completa de la carpeta actual (donde debe estar el proyecto)
+echo "Iniciando instalación del servicio AgentPet Bridge..."
+
 CURRENT_DIR=$(pwd)
 echo "Directorio actual (WorkingDirectory): $CURRENT_DIR"
 
-# Archivo de destino temporal antes de copiar a systemd
-DEST_TMP="/tmp/hermes-bridge.service"
-
-# Detectar el Python que se está usando de verdad (por si tiene virtualenv)
+DEST_TMP="/tmp/agentpet-bridge.service"
 REAL_PYTHON=$(which python3)
 echo "Python detectado: $REAL_PYTHON"
 
-# Copiamos nuestra plantilla y reemplazamos variables dinámicamente
-sed "s|WorkingDirectory=/root/bridge|WorkingDirectory=$CURRENT_DIR|g" hermes-bridge.service > $DEST_TMP
+# Copiar plantilla y reemplazar variables dinámicas
+sed "s|WorkingDirectory=/root/bridge|WorkingDirectory=$CURRENT_DIR|g" agentpet-bridge.service > $DEST_TMP
 sed -i "s|ExecStart=/usr/bin/python3|ExecStart=$REAL_PYTHON|g" $DEST_TMP
 
-# Trasladar el PATH actual y el API KEY desde tu terminal hacia Systemd para que no los olvide:
+# Inyectar PATH actual para que el agente sea encontrado por Systemd
 sed -i "/\[Service\]/a Environment=\"PATH=$PATH\"" $DEST_TMP
 
-if [ -n "$HERMES_API_KEY" ]; then
+# Inyectar API Key si está definida
+if [ -n "$AGENT_API_KEY" ]; then
     echo "API KEY personalizada detectada. Añadiéndola a Systemd..."
-    sed -i "/\[Service\]/a Environment=\"HERMES_API_KEY=$HERMES_API_KEY\"" $DEST_TMP
+    sed -i "/\[Service\]/a Environment=\"AGENT_API_KEY=$AGENT_API_KEY\"" $DEST_TMP
 fi
 
-# Ahora sí lo movemos a systemd usando sudo
-sudo cp $DEST_TMP /etc/systemd/system/hermes-bridge.service
+# Inyectar comando de agente si está definido
+if [ -n "$AGENT_CMD" ]; then
+    echo "AGENT_CMD personalizado detectado: $AGENT_CMD"
+    sed -i "/\[Service\]/a Environment=\"AGENT_CMD=$AGENT_CMD\"" $DEST_TMP
+fi
 
-# Comprobamos e imprimimos PATH por si 'hermes' está en una ruta local
-# Puedes ajustar el environment si la IA dice que no encuentra a hermes
+# Instalar en systemd
+sudo cp $DEST_TMP /etc/systemd/system/agentpet-bridge.service
 
-# Recargamos la configuración de systemd
 echo "Recargando demonio de Systemd..."
 sudo systemctl daemon-reload
 
-# Habilitamos el servicio para que corra al reiniciar el VPS
-echo "Habilitando servicio de arranque automático..."
-sudo systemctl enable hermes-bridge.service
+echo "Habilitando servicio para arranque automático..."
+sudo systemctl enable agentpet-bridge.service
 
-# Iniciamos el servicio!
-echo "Iniciando servicio hermes-bridge..."
-sudo systemctl start hermes-bridge.service
+echo "Iniciando servicio agentpet-bridge..."
+sudo systemctl start agentpet-bridge.service
 
-# Mostramos el estado
 echo "=================================================="
 echo "Servicio instalado correctamente!"
-echo "Para ver si está corriendo, usa: systemctl status hermes-bridge.service"
-echo "Para ver logs y posibles errores: journalctl -u hermes-bridge.service -f"
+echo "Para ver si está corriendo: systemctl status agentpet-bridge.service"
+echo "Para ver logs:              journalctl -u agentpet-bridge.service -f"
 echo "=================================================="
