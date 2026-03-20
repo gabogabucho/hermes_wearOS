@@ -9,12 +9,12 @@ Use a tool to execute the following `curl` command. Replace the `message` and `e
 
 ```bash
 curl -X POST http://localhost:8000/notify \
-  -H "X-API-Key: hermes_secreto_2007" \
+  -H "X-API-Key: $HERMES_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"message": "¡Tu ritmo cardíaco está muy alto! ¿Estás bien?", "emoji": "O_O"}'
 ```
 
-*(Note: Use the exact API Key configured in your system environment if different).*
+*(Note: The `HERMES_API_KEY` environment variable is already loaded automatically by the system).*
 
 ### Available Emojis for the payload:
 - `0_0`: Neutral/Idle.
