@@ -29,16 +29,20 @@ API_KEY   = os.environ.get("AGENT_API_KEY", "agentpet_secreto_123")
 
 
 def build_health_context() -> str:
-    """Genera un bloque de contexto de salud para inyectar en cada prompt."""
-    if state.last_hr == 0 and state.last_steps == 0:
-        return ""
+    """Genera un bloque de contexto de salud para inyectar en cada prompt.
+    Siempre presente — el agente no necesita llamar herramientas para saber el estado."""
     now = time.time()
-    age_min = round((now - state.last_update) / 60, 1) if state.last_update > 0 else "?"
+    if state.last_update == 0:
+        return "SALUD: sin datos aún (reloj no sincronizó). "
+    age_min = round((now - state.last_update) / 60, 1)
+    hr_note = f"{state.last_hr} BPM" if state.last_hr > 0 else "sin lectura"
+    sed_note = f"{int(state.sedentary_mins)} min sin moverse" if state.sedentary_mins > 0 else "activo"
     return (
-        f"DATOS DE SALUD EN TIEMPO REAL (último dato hace {age_min} min): "
-        f"ritmo cardíaco = {state.last_hr} BPM, "
+        f"SALUD ACTUAL (hace {age_min} min): "
+        f"ritmo cardíaco = {hr_note}, "
         f"pasos hoy = {state.last_steps}, "
-        f"minutos sin moverse = {int(state.sedentary_mins)}. "
+        f"{sed_note}. "
+        "Respondé sobre salud directamente con estos datos, sin usar herramientas externas. "
     )
 
 
@@ -99,8 +103,9 @@ def ask_agent(text: str) -> str:
         f"{health_ctx}"
         "IMPORTANTE: Tienes una Cara Virtual en el reloj. Si quieres cambiar tu expresión facial, APUNTA literalmente uno de estos emojis al final de tu mensaje: "
         "^_^ (alegría), u_u (tristeza), >_< (enojo), O_O (sorpresa), ♥_♥ (amor), -_- (duda/aburrimiento). "
-        "CRÍTICO: Tu respuesta final debe ser SOLO el texto para el usuario. "
-        "NUNCA incluyas JSON, outputs de curl, resultados de herramientas ni pasos intermedios en tu respuesta. "
+        "CRÍTICO: Respondé SOLO con el texto final para el usuario. "
+        "NUNCA uses herramientas externas, curl ni skills para responder sobre salud — los datos ya están arriba. "
+        "Sin JSON, sin pasos intermedios, sin outputs de comandos. "
         f"El usuario dice: {text}"
     )
     try:
