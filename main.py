@@ -51,6 +51,7 @@ app = FastAPI(title="Hermes Wear OS Bridge")
 # Global state for the virtual pet
 class PetState:
     emoji = "0_0"
+    notification = ""
     last_hr = 0
     last_steps = 0
     last_update = time.time()
@@ -69,6 +70,10 @@ class ChatResponse(BaseModel):
 class TextChat(BaseModel):
     message: str
 
+class NotifyData(BaseModel):
+    message: str
+    emoji: str = "O_O"
+
 @app.get("/")
 async def root():
     return {"status": "online", "agent": "Hermes"}
@@ -85,13 +90,23 @@ async def update_health(data: HealthData):
     elif state.last_hr < 50 and state.last_hr > 0:
         state.emoji = "-_-"
     else:
-        state.emoji = "0_0"
+        # Default expression fall-back isn't necessary here if we're controlling it via NLP now
+        pass
         
     return {"status": "ok", "mood": state.emoji}
 
+@app.post("/notify", dependencies=[Depends(verify_api_key)])
+async def push_notification(data: NotifyData):
+    # Endpoint to remotely push a standalone notification to the watch
+    state.notification = data.message
+    state.emoji = data.emoji
+    return {"status": "Notification buffered for Watch delivery"}
+
 @app.get("/mood", dependencies=[Depends(verify_api_key)])
 async def get_mood():
-    return {"emoji": state.emoji}
+    notif = state.notification
+    state.notification = "" # Clear so it only triggers once
+    return {"emoji": state.emoji, "notification": notif}
 
 def extract_emotion_and_clean_text(text: str) -> tuple[str, str]:
     emojis_map = {
