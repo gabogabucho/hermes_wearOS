@@ -20,8 +20,11 @@ def ask_hermes(text: str) -> str:
             check=True
         )
         return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.strip() if e.stderr else (e.stdout.strip() if e.stdout else str(e))
+        return f"Hermes Error: {error_msg}"
     except Exception as e:
-        return f"Error al contactar con Hermes: {str(e)}"
+        return f"System Error: {str(e)}"
 
 API_KEY = os.environ.get("HERMES_API_KEY", "hermes_secreto_123")
 api_key_header = APIKeyHeader(name="X-API-Key")
