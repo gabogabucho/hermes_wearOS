@@ -14,7 +14,7 @@ def ask_hermes(text: str) -> str:
         # We run the 'hermes' command as a subprocess
         # Adjust command if your hermes installation uses a different alias
         result = subprocess.run(
-            ["hermes", "chat", "--text", text],
+            ["hermes", "chat", "-Q", "-q", text],
             capture_output=True,
             text=True,
             check=True
