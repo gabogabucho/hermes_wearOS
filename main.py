@@ -87,6 +87,10 @@ def clean_agent_output(text: str) -> str:
         # Saltar líneas de session/tool del agente
         if re.match(r'(?i)^\[?\s*(session|tool_call|function_call|tool)\s*(id)?\s*:', stripped):
             continue
+        if re.match(r'(?i)^session[_\s-]*id\s*:', stripped):
+            continue
+        if stripped.startswith("$") or stripped.startswith("`$"):
+            continue
 
         # Saltar bloques de código markdown
         if stripped.startswith('```'):
@@ -123,8 +127,8 @@ def ask_agent(text: str) -> str:
         )
         output = result.stdout.strip()
         # Limpiar session IDs y restos del agente
-        output = re.sub(r'(?im)^\[?.*?session\s*(id)?\s*:.*?\]?\s*$', '', output)
-        output = re.sub(r'(?i)\[?\s*session\s*(id)?\s*:[^\]\n]*\]?', '', output)
+        output = re.sub(r'(?im)^\[?.*?session[_\s-]*(id)?\s*:.*?\]?\s*$', '', output)
+        output = re.sub(r'(?i)\[?\s*session[_\s-]*(id)?\s*:[^\]\n]*\]?', '', output)
         # Filtrar outputs de herramientas (JSON, curl, código)
         output = clean_agent_output(output)
         return output.strip()
