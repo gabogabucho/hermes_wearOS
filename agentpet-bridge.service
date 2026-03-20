@@ -17,6 +17,14 @@ ExecStart=/usr/bin/python3 main.py
 #
 # Nombre visible en GET /
 # Environment="AGENT_NAME=Hermes"
+# API key esperada por el reloj
+# Environment="AGENT_API_KEY=tu_clave"
+# Alias legacy soportado por compatibilidad
+# Environment="HERMES_API_KEY=tu_clave"
+# Ajustes del gateway
+# Environment="SESSION_IDLE_TIMEOUT_S=900"
+# Environment="SESSION_HISTORY_TURNS=6"
+# Environment="WEATHER_LOCATION=Buenos Aires"
 # ─────────────────────────────────────────────────────────────────────────
 
 # Si el CLI del agente no está en el PATH del servicio, añádelo aquí:
