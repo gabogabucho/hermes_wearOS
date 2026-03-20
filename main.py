@@ -1,10 +1,14 @@
 import asyncio
+import json
 import os
 import re
 import uuid
 import time
 import subprocess
 from contextlib import asynccontextmanager
+from datetime import datetime
+from urllib.parse import quote
+from urllib.request import urlopen
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Security
 from fastapi.security import APIKeyHeader
@@ -26,6 +30,8 @@ from transcription import engine
 
 AGENT_CMD = os.environ.get("AGENT_CMD", "hermes chat -Q -q").split()
 API_KEY   = os.environ.get("AGENT_API_KEY", "agentpet_secreto_123")
+WEATHER_LOCATION = os.environ.get("WEATHER_LOCATION", "Buenos Aires")
+WEATHER_CACHE_S = int(os.environ.get("WEATHER_CACHE_S", "900"))
 
 
 def build_health_context() -> str:
@@ -122,7 +128,7 @@ def ask_agent(text: str) -> str:
         "IMPORTANTE: Tienes una Cara Virtual en el reloj. Si quieres cambiar tu expresión facial, APUNTA literalmente uno de estos emojis al final de tu mensaje: "
         "^_^ (alegría), u_u (tristeza), >_< (enojo), O_O (sorpresa), ♥_♥ (amor), -_- (duda/aburrimiento). "
         "CRÍTICO: Respondé SOLO con el texto final para el usuario. "
-        "NUNCA uses herramientas externas, curl ni skills para responder sobre salud — los datos ya están arriba. "
+        "Si la consulta es sobre salud, respondé con esos datos y sin usar herramientas externas. "
         "Sin JSON, sin pasos intermedios, sin outputs de comandos. "
         f"El usuario dice: {text}"
     )
@@ -181,6 +187,8 @@ class PetState:
     hr_high_count    = 0     # Checks consecutivos con HR elevado
     sedentary_mins   = 0.0   # Minutos acumulados sin movimiento
     steps_baseline   = 0     # Pasos al inicio del período sedentario
+    weather_cache    = None
+    weather_cached_at = 0.0
 
 state = PetState()
 
