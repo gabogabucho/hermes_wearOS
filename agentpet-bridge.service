@@ -11,6 +11,7 @@ ExecStart=/usr/bin/python3 main.py
 # ── Configura el agente que quieras usar ──────────────────────────────────
 # Hermes Agent (default):
 # Environment="AGENT_CMD=hermes chat -Q -q"
+# Environment="AGENT_RESUME_CMD=hermes chat --resume {session_id} -Q -q"
 #
 # llm (simonw/llm):
 # Environment="AGENT_CMD=llm -m gpt-4o"
@@ -22,9 +23,9 @@ ExecStart=/usr/bin/python3 main.py
 # Alias legacy soportado por compatibilidad
 # Environment="HERMES_API_KEY=tu_clave"
 # Ajustes del gateway
-# Environment="SESSION_IDLE_TIMEOUT_S=900"
-# Environment="SESSION_HISTORY_TURNS=6"
+# Environment="SESSION_MAP_PATH=/root/bridge/watch_sessions.json"
 # Environment="WEATHER_LOCATION=Buenos Aires"
+# Environment="WATCH_PLATFORM_HINT=Wear OS watch client. Prefer concise answers unless the user asks for detail."
 # ─────────────────────────────────────────────────────────────────────────
 
 # Si el CLI del agente no está en el PATH del servicio, añádelo aquí:

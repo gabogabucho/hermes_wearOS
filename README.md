@@ -4,38 +4,38 @@ Gateway HTTP para conectar una app de Wear OS con Hermes como mascota asistente.
 
 ## Qué resuelve
 
-- Mantiene una sesión conversacional por `session_key` con timeout por inactividad.
-- Inyecta reglas estables de comportamiento para el modo reloj.
+- Mantiene un mapeo entre `session_key` del reloj y `session_id` nativo de Hermes.
+- Deja la memoria, `SOUL`, skills y session search en Hermes Agent.
 - Conserva endpoints compatibles con la app actual.
 - Resuelve rápido sólo consultas triviales del dispositivo:
   - hora
   - clima
-- Deja todo lo demás al agente completo con sus tools normales.
+- Deja todo lo demás al Hermes real con sus tools normales.
 
-## Perfil del agente
+## Rol del bridge
 
-El gateway inyecta un perfil de reloj estable:
+El bridge no reemplaza la identidad del agente:
 
-- mascota asistente para Wear OS
-- respuestas breves y cálidas
-- pantalla chica: 1 o 2 líneas salvo pedido explícito
-- sin trazas, JSON, comandos ni `session_id`
-- salud: usar primero los datos locales del reloj
-- resto de consultas: usar herramientas normalmente si hace falta
+- Hermes sigue siendo el mismo agente
+- la personalidad debería vivir en `SOUL.md`, personalidad o memoria nativa de Hermes
+- el bridge sólo aporta contexto del dispositivo
+- salud: agrega datos locales del reloj a la consulta cuando aplica
+- watch UI: puede enviar una pista mínima de plataforma para respuestas más concisas
 
 ## Variables de entorno
 
 - `AGENT_CMD`: comando base del agente. Default: `hermes chat -Q -q`
+- `AGENT_RESUME_CMD`: comando para reanudar una sesión existente. Default: `hermes chat --resume {session_id} -Q -q`
 - `AGENT_API_KEY`: API key esperada por el gateway
 - `HERMES_API_KEY`: alias soportado por compatibilidad
 - `AGENT_NAME`: nombre visible en `GET /`
 - `WEATHER_LOCATION`: ciudad para clima rápido. Default: `Buenos Aires`
 - `WEATHER_CACHE_S`: cache de clima en segundos. Default: `900`
 - `AGENT_TIMEOUT_S`: timeout del CLI. Default: `25`
-- `SESSION_IDLE_TIMEOUT_S`: timeout de sesión en segundos. Default: `900`
-- `SESSION_HISTORY_TURNS`: cantidad de turnos recordados. Default: `6`
+- `SESSION_MAP_PATH`: JSON local con el mapeo `session_key -> session_id`
 - `WATCH_TIMEOUT_S`: si el reloj no reporta actividad, el loop proactivo no molesta. Default: `1800`
 - `NOTIF_COOLDOWN_S`: cooldown entre notificaciones proactivas. Default: `600`
+- `WATCH_PLATFORM_HINT`: pista breve opcional para recordar que la salida va a pantalla chica
 
 ## Endpoints
 
@@ -64,9 +64,9 @@ Todos salvo `GET /` requieren header `X-API-Key`.
 
 ## Sesiones
 
-- Cada conversación vive en memoria del gateway.
-- La sesión se busca por `session_key`.
-- Si expira por inactividad, se crea una nueva automáticamente.
+- Hermes conserva la conversación real.
+- El bridge sólo recuerda qué `session_id` de Hermes corresponde a cada `session_key`.
+- Ese mapeo se persiste en un JSON local para sobrevivir reinicios del bridge.
 - La app actual puede seguir usando `watch-main`.
 - Más adelante se puede asignar una sesión por reloj, usuario o device id.
 
@@ -86,7 +86,7 @@ Todos salvo `GET /` requieren header `X-API-Key`.
 Este repo ya está orientado a gateway:
 
 - la app Wear es cliente liviano
-- el gateway conserva sesión y reglas
-- Hermes recibe menos ruido y más contexto útil
+- el gateway traduce sensores, voz, wake y notificaciones
+- Hermes conserva memoria, skills, `SOUL` y continuidad real
 
-El siguiente paso natural es persistir sesiones o conectarse a una sesión viva del agente sin relanzar el CLI por turno.
+El siguiente paso natural es reemplazar la llamada por CLI con una integración directa a Hermes Agent desde Python o su gateway nativo, sin cambiar la interfaz del reloj.
