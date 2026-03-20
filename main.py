@@ -227,6 +227,38 @@ async def push_notification(data: NotifyData):
     return {"status": "Notification buffered for Watch delivery"}
 
 
+@app.get("/status", dependencies=[Depends(verify_api_key)])
+async def get_status():
+    """Estado completo del usuario — para que el agente pueda responder preguntas de salud."""
+    now = time.time()
+    return {
+        "heart_rate":   state.last_hr,
+        "steps":        state.last_steps,
+        "emoji":        state.emoji,
+        "watch_active": state.last_seen > 0 and (now - state.last_seen) < WATCH_TIMEOUT_S,
+        "data_age_min": round((now - state.last_update) / 60, 1) if state.last_update > 0 else None,
+        "sedentary_min": round(state.sedentary_mins, 1),
+    }
+
+
+@app.post("/proactive/test", dependencies=[Depends(verify_api_key)])
+async def test_proactive(context: Optional[str] = None):
+    """Fuerza una ejecución inmediata del loop proactivo. Útil para testear.
+    Pasa 'context' para darle al agente un escenario específico."""
+    prompt = context or (
+        f"Datos actuales: ritmo cardíaco = {state.last_hr} BPM, "
+        f"pasos hoy = {state.last_steps}, "
+        f"minutos sin moverse = {int(state.sedentary_mins)}. "
+        "Dame un mensaje proactivo breve y relevante para mandar al usuario en su reloj. Máx 1 línea."
+    )
+    msg = await asyncio.to_thread(ask_agent, prompt)
+    emoji, clean = extract_emotion_and_clean_text(msg)
+    state.notification = clean
+    state.emoji = emoji
+    state.last_notif_time = time.time()
+    return {"triggered": True, "message": clean, "emoji": emoji}
+
+
 @app.get("/mood", dependencies=[Depends(verify_api_key)])
 async def get_mood():
     state.last_seen = time.time()
