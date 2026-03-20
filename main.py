@@ -28,12 +28,79 @@ AGENT_CMD = os.environ.get("AGENT_CMD", "hermes chat -Q -q").split()
 API_KEY   = os.environ.get("AGENT_API_KEY", "agentpet_secreto_123")
 
 
+def build_health_context() -> str:
+    """Genera un bloque de contexto de salud para inyectar en cada prompt."""
+    if state.last_hr == 0 and state.last_steps == 0:
+        return ""
+    now = time.time()
+    age_min = round((now - state.last_update) / 60, 1) if state.last_update > 0 else "?"
+    return (
+        f"DATOS DE SALUD EN TIEMPO REAL (último dato hace {age_min} min): "
+        f"ritmo cardíaco = {state.last_hr} BPM, "
+        f"pasos hoy = {state.last_steps}, "
+        f"minutos sin moverse = {int(state.sedentary_mins)}. "
+    )
+
+
+def clean_agent_output(text: str) -> str:
+    """Elimina outputs de herramientas (JSON, curl, bloques de código) del stdout del agente.
+    Conserva solo las líneas de texto natural destinadas al usuario."""
+    import json as _json
+
+    clean_lines = []
+    in_json_block = False
+
+    for line in text.split('\n'):
+        stripped = line.strip()
+
+        # Saltar líneas vacías al inicio
+        if not stripped and not clean_lines:
+            continue
+
+        # Detectar inicio de bloque JSON multilínea
+        if stripped.startswith(('{', '[')):
+            # Intentar parsear en una sola línea
+            try:
+                _json.loads(stripped)
+                continue  # JSON completo en una línea — saltar
+            except _json.JSONDecodeError:
+                in_json_block = True  # JSON multilínea — entrar en modo skip
+                continue
+
+        if in_json_block:
+            if stripped.endswith(('}', ']')):
+                in_json_block = False  # fin del bloque JSON
+            continue
+
+        # Saltar líneas que son pares clave:valor sueltos (restos de JSON)
+        if re.match(r'^"?\w+"?\s*:\s*', stripped) and not re.search(r'[áéíóúñ¿¡]', stripped):
+            continue
+
+        # Saltar líneas de session/tool del agente
+        if re.match(r'(?i)^\[?\s*(session|tool_call|function_call|tool)\s*(id)?\s*:', stripped):
+            continue
+
+        # Saltar bloques de código markdown
+        if stripped.startswith('```'):
+            continue
+
+        clean_lines.append(line)
+
+    result = '\n'.join(clean_lines).strip()
+    # Si después de limpiar no queda nada útil, devolver el texto original
+    return result if len(result) > 3 else text.strip()
+
+
 def ask_agent(text: str) -> str:
+    health_ctx = build_health_context()
     full_prompt = (
         "INSTRUCCIÓN DEL SISTEMA: Estás respondiendo en la diminuta pantalla de mi Smartwatch. "
         "DEBES responder de forma enérgica y con MUCHA brevedad (máximo 1 o 2 líneas, sin viñetas, directo al punto). "
+        f"{health_ctx}"
         "IMPORTANTE: Tienes una Cara Virtual en el reloj. Si quieres cambiar tu expresión facial, APUNTA literalmente uno de estos emojis al final de tu mensaje: "
         "^_^ (alegría), u_u (tristeza), >_< (enojo), O_O (sorpresa), ♥_♥ (amor), -_- (duda/aburrimiento). "
+        "CRÍTICO: Tu respuesta final debe ser SOLO el texto para el usuario. "
+        "NUNCA incluyas JSON, outputs de curl, resultados de herramientas ni pasos intermedios en tu respuesta. "
         f"El usuario dice: {text}"
     )
     try:
@@ -44,8 +111,11 @@ def ask_agent(text: str) -> str:
             check=True
         )
         output = result.stdout.strip()
+        # Limpiar session IDs y restos del agente
         output = re.sub(r'(?im)^\[?.*?session\s*(id)?\s*:.*?\]?\s*$', '', output)
         output = re.sub(r'(?i)\[?\s*session\s*(id)?\s*:[^\]\n]*\]?', '', output)
+        # Filtrar outputs de herramientas (JSON, curl, código)
+        output = clean_agent_output(output)
         return output.strip()
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.strip() if e.stderr else (e.stdout.strip() if e.stdout else str(e))
