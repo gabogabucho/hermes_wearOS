@@ -80,6 +80,10 @@ def clean_agent_output(text: str) -> str:
         if re.match(r'^"?\w+"?\s*:\s*', stripped) and not re.search(r'[áéíóúñ¿¡]', stripped):
             continue
 
+        # Saltar líneas de ejecución de herramientas de Hermes (┊ 💻 $ comando...)
+        if stripped.startswith('┊') or stripped.startswith('|'):
+            continue
+
         # Saltar líneas de session/tool del agente
         if re.match(r'(?i)^\[?\s*(session|tool_call|function_call|tool)\s*(id)?\s*:', stripped):
             continue
