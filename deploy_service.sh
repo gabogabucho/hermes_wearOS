@@ -31,7 +31,18 @@ if [ -n "$AGENT_CMD" ]; then
     sed -i "/\[Service\]/a Environment=\"AGENT_CMD=$AGENT_CMD\"" $DEST_TMP
 fi
 
-# Instalar en systemd
+# ── Instalar skill en ~/.hermes/skills/ ───────────────────────────────────────
+SKILL_DEST="$HOME/.hermes/skills/watch-control"
+if [ -d "$HOME/.hermes/skills" ]; then
+    echo "Instalando skill watch-control en $SKILL_DEST..."
+    mkdir -p "$SKILL_DEST"
+    cp skills/watch_control/SKILL.md "$SKILL_DEST/SKILL.md"
+    echo "Skill instalada correctamente."
+else
+    echo "AVISO: ~/.hermes/skills no existe — instala Hermes Agent primero y vuelve a correr este script."
+fi
+
+# ── Instalar en systemd ────────────────────────────────────────────────────────
 sudo cp $DEST_TMP /etc/systemd/system/agentpet-bridge.service
 
 echo "Recargando demonio de Systemd..."
