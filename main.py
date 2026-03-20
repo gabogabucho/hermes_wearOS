@@ -113,7 +113,9 @@ def ask_agent(text: str) -> str:
             AGENT_CMD + [full_prompt],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
+            stdin=subprocess.DEVNULL,   # evitar que espere input interactivo
+            timeout=25                  # matar si tarda más de 25 segundos
         )
         output = result.stdout.strip()
         # Limpiar session IDs y restos del agente
@@ -122,11 +124,13 @@ def ask_agent(text: str) -> str:
         # Filtrar outputs de herramientas (JSON, curl, código)
         output = clean_agent_output(output)
         return output.strip()
+    except subprocess.TimeoutExpired:
+        return "Tardé demasiado, intentalo de nuevo -_-"
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.strip() if e.stderr else (e.stdout.strip() if e.stdout else str(e))
-        return f"Agent Error: {error_msg}"
+        return f"Error del agente: {error_msg[:80]}"
     except Exception as e:
-        return f"System Error: {str(e)}"
+        return f"Error: {str(e)[:60]}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
