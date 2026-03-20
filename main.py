@@ -128,10 +128,22 @@ async def text_chat(data: TextChat):
     expresion, clean_text = extract_emotion_and_clean_text(agent_response)
     state.emoji = expresion  # Set it globally too!
     
+    # Vibración háptica distinta según el humor del bot
+    vib_map = {
+        "^_^": 150,    # Vibración alegre/duradera
+        "u_u": 300,    # Larga y pesada
+        ">_<": 500,    # Muy fuerte/enojada
+        "O_O": 50,     # Sobresalto cortito
+        "♥_♥": 200,    # Intermedia amorosa
+        "0_?": 100,    # Duda estándar
+        "0_0": 80,     # Ok estándar
+        "-_-" : 80 
+    }
+    
     return {
         "response": clean_text,
         "emoji": expresion,
-        "vibrate": 100 if "alerta" in clean_text.lower() else 0
+        "vibrate": vib_map.get(expresion, 80)
     }
 
 @app.post("/voice-chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
