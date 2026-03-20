@@ -10,11 +10,16 @@ from transcription import engine
 
 # Interaction with Hermes via CLI
 def ask_hermes(text: str) -> str:
+    full_prompt = (
+        "INSTRUCCIÓN DEL SISTEMA: Estás respondiendo en la diminuta pantalla de mi Smartwatch. "
+        "DEBES responder de forma enérgica, con MUCHA brevedad (máximo 1 o 2 líneas, sin viñetas, directo al punto). "
+        f"El usuario dice: {text}"
+    )
     try:
         # We run the 'hermes' command as a subprocess
         # Adjust command if your hermes installation uses a different alias
         result = subprocess.run(
-            ["hermes", "chat", "-Q", "-q", text],
+            ["hermes", "chat", "-Q", "-q", full_prompt],
             capture_output=True,
             text=True,
             check=True
