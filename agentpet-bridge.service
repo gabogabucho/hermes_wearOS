@@ -25,7 +25,7 @@ ExecStart=/usr/bin/python3 main.py
 # Ajustes del gateway
 # Environment="SESSION_MAP_PATH=/root/bridge/watch_sessions.json"
 # Environment="WEATHER_LOCATION=Buenos Aires"
-# Environment="WATCH_PLATFORM_HINT=Wear OS watch client. Prefer concise answers unless the user asks for detail."
+# Environment="WATCH_PLATFORM_HINT=This session is coming from a Wear OS watch. Stay fully yourself, but be more direct, concise, expressive, and warm for the watch."
 # ─────────────────────────────────────────────────────────────────────────
 
 # Si el CLI del agente no está en el PATH del servicio, añádelo aquí:

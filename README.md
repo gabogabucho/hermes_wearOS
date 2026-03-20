@@ -20,7 +20,7 @@ El bridge no reemplaza la identidad del agente:
 - la personalidad debería vivir en `SOUL.md`, personalidad o memoria nativa de Hermes
 - el bridge sólo aporta contexto del dispositivo
 - salud: agrega datos locales del reloj a la consulta cuando aplica
-- watch UI: puede enviar una pista mínima de plataforma para respuestas más concisas
+- watch UI: envía una pista de plataforma para decirle a Hermes "seguís siendo vos, pero en reloj hablá más directo, breve y expresivo"
 
 ## Variables de entorno
 
@@ -35,7 +35,7 @@ El bridge no reemplaza la identidad del agente:
 - `SESSION_MAP_PATH`: JSON local con el mapeo `session_key -> session_id`
 - `WATCH_TIMEOUT_S`: si el reloj no reporta actividad, el loop proactivo no molesta. Default: `1800`
 - `NOTIF_COOLDOWN_S`: cooldown entre notificaciones proactivas. Default: `600`
-- `WATCH_PLATFORM_HINT`: pista breve opcional para recordar que la salida va a pantalla chica
+- `WATCH_PLATFORM_HINT`: instrucción opcional de plataforma para sesiones del reloj
 
 ## Endpoints
 

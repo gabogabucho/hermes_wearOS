@@ -45,7 +45,13 @@ class GatewayConfig:
     )
     watch_platform_hint: str = os.environ.get(
         "WATCH_PLATFORM_HINT",
-        "Wear OS watch client. Prefer concise answers unless the user asks for detail.",
+        (
+            "This session is coming from a Wear OS watch. Stay fully yourself, with your normal identity, memory, "
+            "skills, and tools. But adapt your style for the watch: be more direct, concise, expressive, and warm. "
+            "Prefer one or two short lines unless the user explicitly asks for more detail. Avoid summaries, meta "
+            "commentary, and long preambles. If it fits naturally, you may use simple watch-safe emotive text like "
+            "^_^, O_O, -_-, u_u, >_<, or 0_? at the end."
+        ),
     )
 
 
@@ -87,9 +93,11 @@ def clean_agent_output(text: str) -> str:
 
     clean_lines: list[str] = []
     in_json_block = False
+    in_summary_block = False
 
     for line in text.splitlines():
         stripped = line.strip()
+        normalized = stripped.lower()
         if not stripped and not clean_lines:
             continue
 
@@ -109,6 +117,20 @@ def clean_agent_output(text: str) -> str:
         if re.match(r'^"?\w+"?\s*:\s*', stripped) and not re.search(r"[áéíóúñ¿¡]", stripped, re.IGNORECASE):
             continue
         if stripped.startswith("┊") or stripped.startswith("|"):
+            continue
+        if re.match(r"(?i)^(session|conversation|context)\s+(summary|resume|recap)\s*:?\s*$", stripped):
+            in_summary_block = True
+            continue
+        if re.match(r"(?i)^resumen(\s+de\s+la\s+sesion|\s+de\s+la\s+sesión|\s+del\s+contexto)?\s*:?\s*$", stripped):
+            in_summary_block = True
+            continue
+        if in_summary_block:
+            if not stripped:
+                in_summary_block = False
+            continue
+        if normalized.startswith(("summary:", "session summary:", "conversation summary:", "context summary:", "resume:", "recap:")):
+            continue
+        if normalized.startswith(("resumen:", "resumen de la sesion:", "resumen de la sesión:", "resumen del contexto:")):
             continue
         if re.match(r"(?i)^\[?\s*(session|tool_call|function_call|tool)\s*(id)?\s*:", stripped):
             continue
