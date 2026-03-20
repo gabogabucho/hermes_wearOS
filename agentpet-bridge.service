@@ -10,6 +10,11 @@ ExecStart=/usr/bin/python3 main.py
 
 # ── Configura el agente que quieras usar ──────────────────────────────────
 # Hermes Agent (default):
+# Preferred clean backend:
+# Environment="HERMES_API_SERVER_URL=http://127.0.0.1:8642"
+# Environment="HERMES_API_SERVER_KEY=tu_api_server_key"
+#
+# CLI fallback:
 # Environment="AGENT_CMD=hermes chat -Q -q"
 # Environment="AGENT_RESUME_CMD=hermes chat --resume {session_id} -Q -q"
 #

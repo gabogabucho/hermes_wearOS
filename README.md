@@ -4,6 +4,7 @@ Gateway HTTP para conectar una app de Wear OS con Hermes como mascota asistente.
 
 ## Qué resuelve
 
+- Puede hablar con Hermes por el `api_server` oficial del gateway, evitando el ruido del CLI.
 - Mantiene un mapeo entre `session_key` del reloj y `session_id` nativo de Hermes.
 - Deja la memoria, `SOUL`, skills y session search en Hermes Agent.
 - Conserva endpoints compatibles con la app actual.
@@ -24,6 +25,8 @@ El bridge no reemplaza la identidad del agente:
 
 ## Variables de entorno
 
+- `HERMES_API_SERVER_URL`: URL base del API server oficial de Hermes. Ej: `http://127.0.0.1:8642`
+- `HERMES_API_SERVER_KEY`: Bearer token del API server si está protegido
 - `AGENT_CMD`: comando base del agente. Default: `hermes chat -Q -q`
 - `AGENT_RESUME_CMD`: comando para reanudar una sesión existente. Default: `hermes chat --resume {session_id} -Q -q`
 - `AGENT_API_KEY`: API key esperada por el gateway
@@ -64,6 +67,7 @@ Todos salvo `GET /` requieren header `X-API-Key`.
 
 ## Sesiones
 
+- Si `HERMES_API_SERVER_URL` está configurado, la sesión del watch vive en el `api_server` oficial de Hermes usando `conversation=session_key`.
 - Hermes conserva la conversación real.
 - El bridge sólo recuerda qué `session_id` de Hermes corresponde a cada `session_key`.
 - Ese mapeo se persiste en un JSON local para sobrevivir reinicios del bridge.
@@ -75,11 +79,15 @@ Todos salvo `GET /` requieren header `X-API-Key`.
 1. Clonar el repo en el VPS.
 2. Instalar dependencias:
    - `pip install -r requirements.txt`
-3. Configurar el servicio con al menos:
-   - `AGENT_CMD`
+3. Recomendado: levantar Hermes Gateway con `api_server`.
+4. Configurar el servicio con al menos:
+   - `HERMES_API_SERVER_URL`
+   - opcional `HERMES_API_SERVER_KEY`
    - `AGENT_API_KEY` o `HERMES_API_KEY`
-4. Levantar `main.py` con `python3`.
-5. Apuntar la app Wear a ese host y mandar `X-API-Key`.
+5. Si no usás `api_server`, el bridge cae al modo CLI legacy con:
+   - `AGENT_CMD`
+6. Levantar `main.py` con `python3`.
+7. Apuntar la app Wear a ese host y mandar `X-API-Key`.
 
 ## Dirección de arquitectura
 
@@ -89,4 +97,4 @@ Este repo ya está orientado a gateway:
 - el gateway traduce sensores, voz, wake y notificaciones
 - Hermes conserva memoria, skills, `SOUL` y continuidad real
 
-El siguiente paso natural es reemplazar la llamada por CLI con una integración directa a Hermes Agent desde Python o su gateway nativo, sin cambiar la interfaz del reloj.
+El backend preferido para el watch debería ser el `api_server` oficial de Hermes. El modo CLI queda sólo como compatibilidad/fallback.

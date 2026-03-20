@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 from urllib.parse import quote
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 
 from fastapi import Depends, FastAPI, File, HTTPException, Security, UploadFile
 from fastapi.security import APIKeyHeader
@@ -26,6 +26,8 @@ class GatewayConfig:
         "AGENT_RESUME_CMD",
         "hermes chat --resume {session_id} -Q -q",
     )
+    api_server_base_url: str = os.environ.get("HERMES_API_SERVER_URL", "").rstrip("/")
+    api_server_key: str = os.environ.get("HERMES_API_SERVER_KEY", "")
     api_key: str = (
         os.environ.get("AGENT_API_KEY")
         or os.environ.get("HERMES_API_KEY")
@@ -145,6 +147,40 @@ def clean_agent_output(text: str) -> str:
 
     result = "\n".join(clean_lines).strip()
     return result if len(result) > 3 else text.strip()
+
+
+def clean_watch_response(text: str) -> str:
+    cleaned = clean_agent_output(text).strip()
+    if not cleaned:
+        return cleaned
+
+    blocks = [block.strip() for block in re.split(r"\n\s*\n", cleaned) if block.strip()]
+    if len(blocks) < 2:
+        return cleaned
+
+    recap_markers = [
+        "en esta sesion",
+        "en esta sesión",
+        "hasta ahora",
+        "me dijiste",
+        "me contaste",
+        "hablamos de",
+        "resumen",
+        "summary",
+        "so far",
+        "you told me",
+        "we talked about",
+        "earlier you said",
+        "previous messages",
+    ]
+    first_block = blocks[0].lower()
+    if any(marker in first_block for marker in recap_markers):
+        return "\n\n".join(blocks[1:]).strip()
+
+    if len(blocks[0].splitlines()) >= 3 and any(marker in cleaned.lower() for marker in recap_markers):
+        return "\n\n".join(blocks[1:]).strip()
+
+    return cleaned
 
 
 def extract_emotion_and_clean_text(text: str) -> tuple[str, str]:
@@ -356,14 +392,18 @@ quick_router = QuickIntentRouter()
 
 
 class AgentGateway:
+    def using_api_server(self) -> bool:
+        return bool(CONFIG.api_server_base_url)
+
     def build_watch_message(self, user_text: str, include_health: bool) -> str:
         parts: list[str] = []
-        if CONFIG.watch_platform_hint:
-            parts.append(f"[watch-platform]\n{CONFIG.watch_platform_hint}")
         if include_health:
             parts.append("[watch-local-health]\n" + build_health_context().strip())
         parts.append(user_text)
         return "\n\n".join(part for part in parts if part).strip()
+
+    def build_watch_instructions(self) -> Optional[str]:
+        return CONFIG.watch_platform_hint.strip() if CONFIG.watch_platform_hint.strip() else None
 
     def build_resume_cmd(self, hermes_session_id: str) -> list[str]:
         return CONFIG.agent_resume_cmd_template.format(session_id=hermes_session_id).split()
@@ -382,7 +422,46 @@ class AgentGateway:
         hermes_session_id = session_match.group(1).strip() if session_match else None
         output = re.sub(r"(?im)^\[?.*?session[_\s-]*(id)?\s*:.*?\]?\s*$", "", output)
         output = re.sub(r"(?i)\[?\s*session[_\s-]*(id)?\s*:[^\]\n]*\]?", "", output)
-        return clean_agent_output(output).strip(), hermes_session_id
+        return clean_watch_response(output).strip(), hermes_session_id
+
+    def run_api_server(self, session_key: str, message: str, instructions: Optional[str]) -> str:
+        payload = {
+            "model": "hermes-agent",
+            "input": message,
+            "conversation": session_key,
+            "store": True,
+        }
+        if instructions:
+            payload["instructions"] = instructions
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+        if CONFIG.api_server_key:
+            headers["Authorization"] = f"Bearer {CONFIG.api_server_key}"
+
+        request = Request(
+            url=f"{CONFIG.api_server_base_url}/v1/responses",
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        with urlopen(request, timeout=CONFIG.agent_timeout_s) as response:
+            body = json.loads(response.read().decode("utf-8"))
+
+        output_items = body.get("output", [])
+        text_parts: list[str] = []
+        for item in output_items:
+            if item.get("type") != "message":
+                continue
+            for part in item.get("content", []):
+                if isinstance(part, dict) and part.get("type") == "output_text":
+                    text_parts.append(part.get("text", ""))
+
+        combined = "\n".join(part for part in text_parts if part).strip()
+        if not combined:
+            combined = body.get("error", "(No response generated)")
+        return clean_watch_response(combined).strip()
 
     async def ask(
         self,
@@ -396,6 +475,17 @@ class AgentGateway:
 
         include_health = is_health_query(text)
         message = self.build_watch_message(text, include_health)
+        instructions = self.build_watch_instructions()
+
+        if self.using_api_server():
+            try:
+                raw = await asyncio.to_thread(self.run_api_server, session_key, message, instructions)
+            except Exception as exc:
+                return f"Error del gateway Hermes: {str(exc)[:80]}", "0_?", 120
+            emoji, clean_text = extract_emotion_and_clean_text(raw)
+            state.emoji = emoji
+            return clean_text, emoji, vibration_for_emoji(emoji)
+
         existing_session = session_store.get(session_key) if allow_session else None
         command = (
             self.build_resume_cmd(existing_session.hermes_session_id)
@@ -542,19 +632,20 @@ async def root():
 @app.get("/gateway/status", dependencies=[Depends(verify_api_key)])
 async def gateway_status():
     return {
-        "sessions": session_store.status(),
+        "sessions": {} if gateway.using_api_server() else session_store.status(),
         "watch_active": state.last_seen > 0 and (time.time() - state.last_seen) < CONFIG.watch_timeout_s,
-        "backend": "hermes-agent",
+        "backend": "hermes-api-server" if gateway.using_api_server() else "hermes-cli",
         "quick_intents": ["time", "weather"],
         "session_map_path": CONFIG.session_map_path,
         "watch_platform_hint": CONFIG.watch_platform_hint,
+        "api_server_base_url": CONFIG.api_server_base_url or None,
     }
 
 
 @app.post("/gateway/reset-session", dependencies=[Depends(verify_api_key)])
 async def reset_session(session_key: str = "watch-main"):
     session_store.reset(session_key)
-    return {"ok": True, "session_key": session_key, "reset": True}
+    return {"ok": True, "session_key": session_key, "reset": True, "backend": "hermes-api-server" if gateway.using_api_server() else "hermes-cli"}
 
 
 @app.post("/health", dependencies=[Depends(verify_api_key)])
