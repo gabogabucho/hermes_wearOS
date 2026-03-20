@@ -92,12 +92,31 @@ async def update_health(data: HealthData):
 async def get_mood():
     return {"emoji": state.emoji}
 
+def analyze_emotion(text: str) -> str:
+    text = text.lower()
+    if any(w in text for w in ["feliz", "bien", "jaja", "genial", "excelente", "alegre", "buen", "jaja"]):
+        return "^_^"
+    elif any(w in text for w in ["triste", "mal", "perdón", "lo siento", "lamentable", "error", "fallo"]):
+        return "u_u"
+    elif any(w in text for w in ["enojo", "odio", "morir", "maldit", "peligro"]):
+        return ">_<"
+    elif any(w in text for w in ["wow", "guau", "increíble", "sorpresa", "oh"]):
+        return "O_O"
+    elif any(w in text for w in ["amor", "cariño", "lindo", "abrazo", "amigo"]):
+        return "♥_♥"
+    elif "?" in text:
+        return "0_?"
+    return "0_0"
+
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
 async def text_chat(data: TextChat):
     agent_response = ask_hermes(data.message)
+    expresion = analyze_emotion(agent_response)
+    state.emoji = expresion  # Set it globally too!
+    
     return {
         "response": agent_response,
-        "emoji": state.emoji,
+        "emoji": expresion,
         "vibrate": 100 if "alerta" in agent_response.lower() else 0
     }
 
