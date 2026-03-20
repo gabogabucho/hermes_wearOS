@@ -19,6 +19,14 @@ echo "Python detectado: $REAL_PYTHON"
 sed "s|WorkingDirectory=/root/bridge|WorkingDirectory=$CURRENT_DIR|g" hermes-bridge.service > $DEST_TMP
 sed -i "s|ExecStart=/usr/bin/python3|ExecStart=$REAL_PYTHON|g" $DEST_TMP
 
+# Trasladar el PATH actual y el API KEY desde tu terminal hacia Systemd para que no los olvide:
+sed -i "/\[Service\]/a Environment=\"PATH=$PATH\"" $DEST_TMP
+
+if [ -n "$HERMES_API_KEY" ]; then
+    echo "API KEY personalizada detectada. Añadiéndola a Systemd..."
+    sed -i "/\[Service\]/a Environment=\"HERMES_API_KEY=$HERMES_API_KEY\"" $DEST_TMP
+fi
+
 # Ahora sí lo movemos a systemd usando sudo
 sudo cp $DEST_TMP /etc/systemd/system/hermes-bridge.service
 
